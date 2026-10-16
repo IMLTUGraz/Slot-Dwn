@@ -1,0 +1,47 @@
+# Relational-Match-To-Sample (RMTS)
+task: rmts                  # train-test generator module in ART/data
+seed: 42                     # used only for deterministic slot attention. any arbitrary seed will work.
+
+# ---- data ----
+path: ART/data/imgs/
+train_gen_method: full_space      # full_space | subsample
+test_gen_method: subsample       # full_space | subsample
+n_shapes: 100                 # total number of shapes available
+m_holdout: 95                 # shapes withheld during training
+train_set_size: 10000         # it may change during train-data generation, depending on the `m_holdout` 
+test_set_size: 10000          # it may change, depending on the test_gen_method 
+train_proportion: 0.95
+img_size: 128
+
+# ---- slot attention encoder (frozen, pretrained) from OCRA ----
+slot_checkpoint: ART/ocra-art.pth.tar
+num_slots: 6
+num_iterations: 3
+hid_dim: 64
+
+# ---- optimization ----
+batch_size: 16
+learning_rate: 0.01
+num_epochs: 100
+num_workers: 4
+log_interval: 5
+save_interval: 5
+
+# ---- hardware ----
+device: 0
+no_cuda: false
+
+# ---- DWN reasoner ----
+dwn:
+  dwn_heads: 2
+  dwn_hid: 512
+  dwn_num_layers: 2
+  dwn_levels: 5
+  tau: 0.05
+  n: 4
+  mapping_type: paired        # one-to-one | paired
+  lm_tau: 0.001
+  first_layer_heads: 1
+  use_subset_lm: true        # sparse (subset) learnable mapping
+  subset_lm_mode: strided     # random | strided | block (if use_subset_lm)
+  pool_size: 240             # pool size (if use_subset_lm)
