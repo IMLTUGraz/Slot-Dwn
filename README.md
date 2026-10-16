@@ -48,7 +48,7 @@ The scripts use a pretrained Slot Attention autoencoder (`ART/slot_ae_ocra.py`, 
 
 ### Data
 
-The shape images must be downloaded from the [OCRA repository](https://github.com/Shanka123/OCRA/imgs/) and must placed under `ART/data/`:
+The shape images must be downloaded from the [OCRA repository](https://github.com/Shanka123/OCRA/tree/main/imgs) and must placed under `ART/data/`:
 
 ```bash
 git clone https://github.com/Shanka123/OCRA.git /tmp/OCRA
