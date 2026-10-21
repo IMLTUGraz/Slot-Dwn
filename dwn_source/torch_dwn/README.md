@@ -1,4 +1,5 @@
-# The implementation of MH-DWN is built upon *Differentiable Weightless Neural Networks*(https://github.com/alanbacellar/DWN/tree/main)
+# The implementation of MH-DWN is built upon *Differentiable Weightless Neural Networks* 
+### (https://github.com/alanbacellar/DWN/tree/main)
 
 This `torch_dwn` package extends the original `LUTLayer` with a **sparse (subset) learnable mapping** (`mapping='subset-learnable'`), utilities to **freeze** a trained mapping into a fixed one, and **binary LUT export**.
 
@@ -221,4 +222,5 @@ GroupSum(k, tau=1, randperm=False)
 | `randperm` | If an int is given, the inputs are shuffled by a fixed random permutation of that size. |
 
 Inputs are zero-padded if the output size is not divisible by `k`.
+
 ---

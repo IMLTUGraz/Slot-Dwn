@@ -107,7 +107,7 @@ class SlotDWN(nn.Module):
             pool_size = hid_dim // 8 if pool_size is None else pool_size
             logger.info('Pool size: %d', pool_size)
 
-        # Remaining layers: learnable mapping first, random afterwards; width halves each layer.
+        # Remaining layers: learnable mapping first, random afterwards. Width halves each layer.
         for i in range(dwn_num_layers - 1):
             in_dim, hid_dim = hid_dim, (dwn_hid if i == 0 else hid_dim // 2)
             if i > 0:
