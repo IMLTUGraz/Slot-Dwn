@@ -2,12 +2,14 @@
 
 👋 Welcome! This is the official implementation of the manuscript **"Object-Centric Differentiable Logic Networks for Abstract Visual Reasoning"**.
 
-**Slot-DWN** is a hybrid architecture combining a perception backbone, i.e., a pretrained Slot Attention encoder which splits each image into object-centric `slots`, with a Multi-Head Differentiable Weightless Network (MH-DWN), which reasons over these object slots using only lookup tables (LUTs), instead of dense weights.
+**Slot-DWN** is a hybrid architecture combining a perception backbone, i.e., a pretrained Slot Attention encoder which splits each image into object-centric *slots*, with a Multi-Head Differentiable Weightless Network (MH-DWN), which reasons over these object slots using only lookup tables (LUTs), instead of dense weights.
 
 **Abstract Visual Reasoning (AVR) Tasks**
 
-- 🧩 **Abstract Reasoning Tasks (ART):** Simple visual reasoning tasks, measuring extreme OOD generalization, on unseen shapes.
-- 🔍 **Odd-Orientation-Out (O3):** Finding the `odd` panel whose object has a different orientation than the others, in an easy and a hard variant.
+- 🧩 **Abstract Reasoning Tasks (ART):** Simple visual reasoning tasks, measuring extreme OOD generalization, on heldout shapes.
+- 🔍 **Odd-Orientation-Out (O3):** Finding the *odd* panel whose object has a different orientation than the others, in an easy and a hard variant.
+- 🧮 **Relational Matrices (RM):** RPM-like problems, where multiple relationships among the objects in a 3x3 grid must be inferred. In addition, similar to ART tasks, RM tasks also measure OOD generalization on heldout shapes.
+
 
 ## Repository Structure
 
