@@ -1,5 +1,4 @@
 # Same/Different (SD)
-task: same_diff                  # train-test generator module in ART/data
 seed: 42                     # used only for deterministic slot attention. any arbitrary seed will work.
 
 # ---- data ----

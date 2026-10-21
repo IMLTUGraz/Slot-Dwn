@@ -1,6 +1,6 @@
 import os
 from slot_ae_ocra import SlotAttentionAutoEncoder
-from MH_DWN import SlotDWN
+from mh_dwn.dwn import SlotDWN
 import time
 import torch.optim as optim
 import torch
@@ -8,31 +8,10 @@ from PIL import Image
 from torchvision.transforms import transforms
 from torch.utils.data import Dataset
 import numpy as np
-from util import log
+from util import log, fill_image
 import torch.nn as nn
 import matplotlib.pyplot as plt
-
-
-def check_path(path):
-	if not os.path.exists(path):
-		os.mkdir(path)
-
-
-def fill_image(all_imgs, idx, full_img, p):
-	h = all_imgs[idx].shape[0]
-	w = all_imgs[idx].shape[1]
-	x = p[0]
-	y = p[1]
-	if h%2==0 and w%2!=0:
-		full_img[x- h//2:x+ h//2 , y- w//2:y+ w//2 +1 ] = all_imgs[idx]
-	elif h%2!=0 and w%2==0:
-		full_img[x- h//2:x+ h//2 +1 , y- w//2:y+ w//2  ] = all_imgs[idx]
-	elif h%2!=0 and w%2!=0:
-		full_img[x- h//2:x+ h//2 +1 , y- w//2:y+ w//2 +1 ] = all_imgs[idx]
-	else:
-		full_img[x- h//2:x+ h//2 , y- w//2:y+ w//2  ] = all_imgs[idx]
-
-	return full_img
+from data import same_diff
 
 
 class SDdataset(Dataset):
@@ -144,9 +123,8 @@ def train(args):
 		train_shapes = all_shapes
 		test_shapes = all_shapes
 
-	task_gen = __import__(args.task)
-	log.info('Generating task: ' + args.task + '...')
-	args, train_set, test_set = task_gen.create_task(args, train_shapes, test_shapes)
+	log.info('Generating SD task samples...')
+	args, train_set, test_set = same_diff.create_task(args, train_shapes, test_shapes)
 
 	train_data = SDdataset(args.path, train_set, args.img_size, args)
 	test_data = SDdataset(args.path, test_set, args.img_size, args)

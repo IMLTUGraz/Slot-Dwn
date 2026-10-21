@@ -1,5 +1,4 @@
 # Distribution of 3 (Dist-3)
-task: dist3                  # train-test generator module in ART/data
 seed: 42                     # used only for deterministic slot attention. any arbitrary seed will work.
 
 # ---- data ----
