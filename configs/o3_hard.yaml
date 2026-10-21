@@ -1,0 +1,46 @@
+# O3-hard
+seed: 42                     # used only for deterministic slot attention. any arbitrary seed will work.
+
+# ---- data ----
+path: O3/data/               # holds <data_name>-o3-{train,test}.npz (generate with O3/dsprites.py)
+data_name: orientation-2obj  # orientation | orientation-2obj
+num_obj: 2                   # objects per panel (slots passed to the DWN)
+train_size: 1000             # training samples
+val_size: 200                # validation samples
+split_seed: -1               # > 0 for a fixed train/val split, otherwise random
+img_size: 128
+
+# ---- slot attention encoder (frozen, pretrained) from OCRA ----
+slot_checkpoint: ART/ocra-art.pth.tar
+num_slots: 6
+num_iterations: 3
+hid_dim: 64
+
+# ---- optimization ----
+batch_size: 16
+learning_rate: 0.01
+num_epochs: 100
+num_workers: 4
+log_interval: 10
+save_interval: 1
+patience: 10
+min_delta: 0.000001
+
+# ---- hardware ----
+device: 0
+no_cuda: false
+
+# ---- DWN reasoner ----
+dwn:
+  dwn_heads: 2
+  dwn_hid: 256
+  dwn_num_layers: 2
+  dwn_levels: 5
+  tau: 0.05
+  n: 4
+  mapping_type: paired        # one-to-one | paired
+  lm_tau: 0.001
+  first_layer_heads: 1
+  use_subset_lm: true        # sparse (subset) learnable mapping
+  subset_lm_mode: strided     # random | strided | block (if use_subset_lm)
+  pool_size: 160             # pool size (if use_subset_lm)
