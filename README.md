@@ -1,6 +1,13 @@
-# <Project Name>
+# Slot-DWN
 
-<!-- TODO: project description / abstract here. -->
+👋 Welcome! This is the official implementation of the manuscript **"Object-Centric Differentiable Logic Networks for Abstract Visual Reasoning"**.
+
+**Slot-DWN** is a hybrid architecture combining a perception backbone, i.e., a pretrained Slot Attention encoder which splits each image into object-centric `slots`, with a Multi-Head Differentiable Weightless Network (MH-DWN), which reasons over these object slots using only lookup tables (LUTs), instead of dense weights.
+
+**Abstract Visual Reasoning (AVR) Tasks**
+
+- 🧩 **Abstract Reasoning Tasks (ART):** Simple visual reasoning tasks, measuring extreme OOD generalization, on unseen shapes.
+- 🔍 **Odd-Orientation-Out (O3):** Finding the `odd` panel whose object has a different orientation than the others, in an easy and a hard variant.
 
 ## Repository Structure
 
@@ -153,7 +160,7 @@ python main.py --task o3_hard
 | `o3_easy` | `configs/o3_easy.yaml` | `O3/train_o3.py`   |
 | `o3_hard` | `configs/o3_hard.yaml` | `O3/train_o3.py`   |
 
-Config options for O3 tasks (the slot attention, optimization and MH-DWN options are the same as for ART-SD task).
+Config options for O3 tasks (the slot attention, optimization and MH-DWN options are the same as for ART-SD task). Extra parameters needed for O3:
 
 | Key | Description |
 |-----|-------------|
