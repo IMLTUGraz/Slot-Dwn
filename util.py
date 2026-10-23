@@ -35,3 +35,19 @@ log.addHandler(ch)
 def check_path(path):
     if not os.path.exists(path):
         os.mkdir(path)
+
+def fill_image(all_imgs, idx, full_img, p):
+	h = all_imgs[idx].shape[0]
+	w = all_imgs[idx].shape[1]
+	x = p[0]
+	y = p[1]
+	if h%2==0 and w%2!=0:
+		full_img[x- h//2:x+ h//2 , y- w//2:y+ w//2 +1 ] = all_imgs[idx]
+	elif h%2!=0 and w%2==0:
+		full_img[x- h//2:x+ h//2 +1 , y- w//2:y+ w//2  ] = all_imgs[idx]
+	elif h%2!=0 and w%2!=0:
+		full_img[x- h//2:x+ h//2 +1 , y- w//2:y+ w//2 +1 ] = all_imgs[idx]
+	else:
+		full_img[x- h//2:x+ h//2 , y- w//2:y+ w//2  ] = all_imgs[idx]
+
+	return full_img
