@@ -1,0 +1,38 @@
+batch_size: 64
+
+model:
+  img_size: [1, 128, 128]
+  enc_channels: [64, 64, 64, 64]
+  dec_channels: [64, 64, 64, 64]
+  target_res: 64
+  dec_hid_res: 8
+  slot_dim: 64
+  num_slots: 11
+  iters: 3
+
+data:
+  path: '$SCRATCH/deepiq/'
+  num_workers: 8
+
+optim:
+  learning_rate: 0.0003
+  warmup_steps: 15000
+  hold_steps: 5000
+  use_decay: true
+  decay_rate: 0.5
+  decay_steps: 100000
+  grad_clip_norm: 1.0
+  amp: True
+
+train:
+  max_iters: 500000
+  device: 0
+  no_cuda: false
+  log_interval: 10
+  visualize_interval: 500
+  val_interval: 5000
+ 
+logging:
+  model_name: RM_enc64-dec8-k11-aug
+  ckpt_dir: checkpoints/RM/
+  log_dir: sae_logs/
