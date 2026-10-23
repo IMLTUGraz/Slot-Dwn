@@ -1,2 +1,7 @@
-.vscode/*
+.vscode/
 ART/data/imgs/*
+__pycache__/
+*.err
+*.out
+*.o
+*.e
