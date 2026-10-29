@@ -25,7 +25,7 @@ from util import log, check_path
 class RMDataset(Dataset):
 	def __init__(self, root_dir, img_size, split='train', augment=True):
 		self.root = os.path.expandvars(root_dir)
-		self.paths = sorted(glob.glob(os.path.join(self.root, '*', split, '*.npz')))
+		self.paths = sorted(glob.glob(os.path.join(self.root, '*', '*-' + split, '*.npz')))	# <folder>/<set>-<split>/
 		self.img_size = img_size
 		self.train = split == 'train' and augment
 		self.resize = transforms.Resize((img_size, img_size))
@@ -124,7 +124,7 @@ def visualize_recon(image, recon_combined, recons, masks, save_path=None):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='rm_slot_ae.yaml', type=str, help='path to yaml config file')
-parser.add_argument('--ckpt', default=None, type=str, help='checkpoint to load the model (config and weights) from. Training resumes from its saved iteration')
+parser.add_argument('--ckpt', default='None', type=str, help='checkpoint to load the model (config and weights) from. Training resumes from its saved iteration')
 parser.add_argument('--visualize', action='store_true', help='skip training: load --ckpt and save a matplotlib slot reconstruction figure')
 parser.add_argument('--vis-out', default='slot_recon.pdf', type=str, help='output path prefix of the --visualize figures; sample n is saved to <prefix>_<n>.pdf')
 parser.add_argument('--vis-n', default=16, type=int, help='number of random samples drawn by --visualize')
@@ -140,7 +140,7 @@ model_cfg = cfg['model']
 data_cfg = cfg['data']
 optim_cfg = cfg['optim']
 train_cfg = cfg['train']
-log_cfg = cfg['logging']
+log_dir = cfg['log_dir']
 
 use_cuda = not train_cfg['no_cuda'] and torch.cuda.is_available()
 device = torch.device("cuda:" + str(train_cfg['device']) if use_cuda else "cpu")
@@ -151,7 +151,7 @@ if args.ckpt is not None:
 	log.info('Loading checkpoint ' + args.ckpt + '...')
 	slot_model, model_cfg, start_iter = load_slot_model(args.ckpt, device)
 	if model_cfg != cfg['model']:
-		log.warning('Saved config of the checkpoint differs from given args' + args.config + ', using the checkpoint\'s')
+		log.warning('Saved config of the checkpoint differs from ' + args.config + ', using the checkpoint\'s')
 	cfg['model'] = model_cfg
 	log.info('Loaded checkpoint (iter ' + str(start_iter) + ')')
 else:
@@ -221,7 +221,7 @@ print('Params', sum(p.numel() for p in slot_model.parameters() if p.requires_gra
 log.info('Training begins...')
 start = time.time()
 
-vis_dir = os.path.join(log_cfg['log_dir'], 'vis')
+vis_dir = os.path.join(log_dir, 'vis')
 check_path(vis_dir)
 
 best_val_loss = float('inf')
@@ -283,11 +283,11 @@ for it in range(start_iter + 1, max_iters + 1):
 
 		if val_mse_loss < best_val_loss:
 			best_val_loss = val_mse_loss
-			ckpt_path = os.path.join(log_cfg['ckpt_dir'], log_cfg['model_name'] + '-best.pth.tar')
+			ckpt_path = os.path.join(cfg['ckpt_dir'], cfg['model_name'] + '-best.pth.tar')
 			save_checkpoint(slot_model, cfg, it, ckpt_path)
 			log.info('Saved best checkpoint to ' + ckpt_path + ' (val/mse_loss = ' + '{:.6f}'.format(best_val_loss) + ')')
 
-final_ckpt_path = os.path.join(log_cfg['ckpt_dir'], log_cfg['model_name'] + '-final.pth.tar')
+final_ckpt_path = os.path.join(cfg['ckpt_dir'], cfg['model_name'] + '-final.pth.tar')
 save_checkpoint(slot_model, cfg, max_iters, final_ckpt_path)
 log.info('Saved final checkpoint to ' + final_ckpt_path)
 log.info('Training complete in ' + '{:.2f}'.format(time.time() - start) + 's')

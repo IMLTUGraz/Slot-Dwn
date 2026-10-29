@@ -2,8 +2,11 @@
 Random (rule-free) DeepIQ panels for slot attention autoencoder pretraining.
 
 Usage:
-    python generate_random.py --root {root} --num-samples 150000 --split train
-Output: {root}/{folder}/{split}/{i}.npz (panels, objects) + annotations.json
+    python generate_random.py --root {root} --num-samples 150000 --split g-set --ext train
+Output: {root}/{folder}/{split}-{ext}/{i}.npz (panels, objects) + annotations.json
+
+--split selects the shapes: g-set uses the train shapes, s-set the held-out shapes.
+--ext: train or test
 """
 import argparse, json, math, os, random
 import numpy as np
@@ -114,12 +117,13 @@ def generate(
     root: str,
     num_samples: int,
     folder: str = 'deepiq_random',
-    split: str = 'train',
+    split: str = 'g-set',
+    ext: str = 'train',
     resolution: tuple[int, int] = (256, 256),
     num_objects: int = NUM_OBJECTS,
     **render_kwargs
 ):
-    out_dir = f'{root}/{folder}/{split}'
+    out_dir = f'{root}/{folder}/{split}-{ext}'
     os.makedirs(out_dir, exist_ok=True)
     annotations = {}
     for i in tqdm(range(num_samples), total=num_samples, desc='generate'):
@@ -141,7 +145,8 @@ if __name__ == '__main__':
     parser.add_argument('--root', required=True, type=str)
     parser.add_argument('--num-samples', required=True, type=int)
     parser.add_argument('--folder', default='deepiq_random', type=str)
-    parser.add_argument('--split', default='train', choices=['train', 'test'])
+    parser.add_argument('--split', default='g-set', choices=['g-set', 's-set'], help='g-set: train shapes, s-set: held-out shapes')
+    parser.add_argument('--ext', default='train', choices=['train', 'test'])
     parser.add_argument('--resolution', default=256, type=int)
     parser.add_argument('--num-objects', default=NUM_OBJECTS, type=int, help='shapes per panel')
     parser.add_argument('--obj-scale', default=1.0, type=float, help='shape size relative to the relational panel cell')
@@ -153,7 +158,7 @@ if __name__ == '__main__':
     if args.seed is not None:
         random.seed(args.seed)
     generate(
-        args.root, args.num_samples, folder=args.folder, split=args.split,
+        args.root, args.num_samples, folder=args.folder, split=args.split, ext=args.ext,
         resolution=(args.resolution, args.resolution), num_objects=args.num_objects,
         obj_scale=args.obj_scale, gap=args.gap, margin=args.margin
     )

@@ -5,8 +5,11 @@ row, column, diagonal or constant rules.
 Requirements: cairosvg, numpy, Pillow, torchvision, tqdm
 
 Usage:
-    python data/deepiq.py --root {root} --num-samples 10000 --num-relations 1 --split train
-Output: {root}/{folder}/{num_relations}/{split}/{i}.png + annotations.json
+    python data/deepiq.py --root {root} --num-samples 10000 --num-relations 1 --split g-set --ext train
+Output: {root}/{folder}/{num_relations}/{split}-{ext}/{i}.png + annotations.json
+
+--split selects the shapes: g-set uses the train shapes, s-set the held-out shapes.
+--ext: train or test
 """
 
 import argparse, io, json, os, random, re
@@ -48,16 +51,16 @@ def choice_wo_replace(items, k: int):
 
 class DeepIQ:
     ATTRIBUTES = dict(
-        SHAPE = dict(
-            train=[
+        SHAPE = {
+            'g-set': [
                 'bar-medium', 'bar-narrow', 'rectangle', 'shield', 'square',
                 'circle', 'ellipse', 'cup',
                 'tee', 'tee-short', 'tee-long',
                 'trapezoid',
                 'triangle', 'triangle-isosceles', 'triangle-rectangle'
             ],
-            test=['club', 'spade', 'diamond', 'heart', 'star']
-    ),
+            's-set': ['club', 'spade', 'diamond', 'heart', 'star']
+        },
         ROTATION = [0, 45, 90, 135, 180, 225, 270, 315],
         ZOOM = [0.6, 0.8, 1],
         GRAYSCALE = [0, 72, 109, 182, 255]
@@ -146,10 +149,11 @@ class DeepIQ:
         folder: str,
         num_relations: int,
         split: str,
+        ext: str,
         resolution: tuple[int, int] = (256, 256),
         fmt: str = 'png'
     ):
-        folder = f'{root}/{folder}/{num_relations}/{split}'
+        folder = f'{root}/{folder}/{num_relations}/{split}-{ext}'
         os.makedirs(folder, exist_ok=True)
         annotations = []
         for i in tqdm(range(num_samples), total=num_samples, desc='generate'):
@@ -167,7 +171,8 @@ if __name__ == '__main__':
     parser.add_argument('--num-samples', required=True, type=int)
     parser.add_argument('--folder', default='deepiq', type=str)
     parser.add_argument('--num-relations', required=True, type=int, choices=[1, 2, 3])
-    parser.add_argument('--split', default='train', choices=['train', 'test'])
+    parser.add_argument('--split', default='g-set', choices=['g-set', 's-set'], help='g-set: train shapes, s-set: held-out shapes')
+    parser.add_argument('--ext', default='train', choices=['train', 'test'])
     parser.add_argument('--resolution', default=256, type=int)
     parser.add_argument('--format', default='png', choices=['png', 'pdf'], help='image file format of the saved panels')
     parser.add_argument('--seed', default=None, type=int)
@@ -177,5 +182,5 @@ if __name__ == '__main__':
         random.seed(args.seed)
     DeepIQ.generate(
         args.root, args.num_samples, folder=args.folder, num_relations=args.num_relations,
-        split=args.split, resolution=(args.resolution, args.resolution), fmt=args.format
+        split=args.split, ext=args.ext, resolution=(args.resolution, args.resolution), fmt=args.format
     )

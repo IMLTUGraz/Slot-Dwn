@@ -1,6 +1,5 @@
 import os
 import glob
-import argparse
 import time
 import numpy as np
 import matplotlib
@@ -8,7 +7,6 @@ matplotlib.use('Agg')
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import yaml
 from PIL import Image
 from torchvision.transforms import transforms
 import torchvision.transforms.functional as tf
@@ -16,7 +14,7 @@ from torch.utils.data import Dataset
 
 from slot_ae import SlotAutoEncoder
 from mh_dwn.dwn import SlotDWN
-from util import log
+from util import log, check_path
 
 class RMDataset(Dataset):
 	def __init__(self, root_dir, num_relations, img_size):
@@ -35,11 +33,11 @@ class RMDataset(Dataset):
 		return img, answer
 
 
-def load_slot_model(ae_config, ckpt_path, device, seed=None):
-	with open(ae_config, 'r') as f:
-		model_cfg = yaml.safe_load(f)['model']
-	slot_model = SlotAutoEncoder(**model_cfg).to(device)
+def load_slot_model(ckpt_path, device, seed=None):
+	"""Builds the model from the model config saved in the checkpoint."""
 	ckpt = torch.load(ckpt_path, map_location=device)
+	model_cfg = ckpt['cfg']['model']
+	slot_model = SlotAutoEncoder(**model_cfg).to(device)
 	slot_model.load_state_dict(ckpt['slot_model_state_dict'])
 	slot_model.eval()
 	for p in slot_model.parameters():
@@ -117,46 +115,37 @@ def evaluate(slot_model, dwn_model, dataloader, num_obj, device):
 	return 100.0 * correct / total
 
 
-def main():
-	parser = argparse.ArgumentParser()
-	parser.add_argument('--config', default='rm_dwn.yaml', type=str, help='path to yaml config file')
-	parser.add_argument('--num-relations', default=1, type=int, help='number of relations in the RM dataset')
-	args = parser.parse_args()
+def train(args):
+	print(args)
 
-	with open(args.config, 'r') as f:
-		cfg = yaml.safe_load(f)
-	cfg['data']['num_relations'] = args.num_relations
-	print(cfg)
-	train(cfg)
-
-def train(cfg):
-	ae_cfg = cfg['slot_ae']
-	data_cfg = cfg['data']
-	dwn_cfg = cfg['dwn']
-	optim_cfg = cfg['optim']
-	train_cfg = cfg['train']
-	num_relations = data_cfg['num_relations']
-	num_obj = ae_cfg['num_obj']
+	ae_cfg = args.slot_ae
+	data_cfg = args.data
+	dwn_cfg = args.dwn
+	optim_cfg = args.optim
+	train_cfg = args.train
+	num_relations = args.num_relations
+	num_slots = ae_cfg['num_slots']
+	save_dir = args.ckpt_dir
 
 	use_cuda = not train_cfg['no_cuda'] and torch.cuda.is_available()
 	device = torch.device('cuda:' + str(train_cfg['device']) if use_cuda else 'cpu')
 
 	log.info('Loading slot autoencoder...')
-	slot_model, model_cfg = load_slot_model(ae_cfg['config'], ae_cfg['ckpt'], device, cfg['seed'])
+	slot_model, model_cfg = load_slot_model(ae_cfg['ckpt'], device, args.seed)
 	img_res = model_cfg['img_size'][1]
 
 	log.info('Loading RM dataset, relations = ' + str(num_relations))
 	train_data = RMDataset(data_cfg['train_path'], num_relations, img_res)
 	test_data = RMDataset(data_cfg['test_path'], num_relations, img_res)
-	train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=cfg['batch_size'],
+	train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=optim_cfg['batch_size'],
 							shuffle=True, num_workers=data_cfg['num_workers'])
-	test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=cfg['batch_size'],
+	test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=optim_cfg['batch_size'],
 							shuffle=False, num_workers=data_cfg['num_workers'])
 	print('Number of samples in training set>>', len(train_data))
 	print('Number of samples in test set>>', len(test_data))
 
 	log.info('Building model...')
-	dwn_model = SlotDWN(slot_dim=model_cfg['slot_dim'], n_slots=num_obj, out_size=1, **dwn_cfg).to(device)
+	dwn_model = SlotDWN(slot_dim=slot_model.encoder.hidden_dim, n_slots=num_slots, out_size=1, **dwn_cfg).to(device)
 	print('---Model---')
 	print(dwn_model)
 
@@ -169,7 +158,7 @@ def train(cfg):
 	log.info('Fitting binarization on training slots...')
 	all_slots = []
 	for img, _ in train_dataloader:
-		all_slots.append(encode_panels(slot_model, img.to(device).float(), num_obj))
+		all_slots.append(encode_panels(slot_model, img.to(device).float(), num_slots))
 	dwn_model.fit_binarization(torch.cat(all_slots, dim=0))
 
 	log.info('Training begins...')
@@ -187,7 +176,7 @@ def train(cfg):
 			target = target.to(device).long()
 			dwn_model.clip_luts()
 
-			slot_panels = encode_panels(slot_model, img, num_obj)
+			slot_panels = encode_panels(slot_model, img, num_slots)
 			scores = score_panels(dwn_model, slot_panels)
 			loss = ce_criterion(scores, target)
 			acc = torch.eq(scores.argmax(-1), target).float().mean().item() * 100.0
@@ -214,25 +203,22 @@ def train(cfg):
 		print('Average training accuracy>>', avg_train_acc)
 
 		if epoch % train_cfg['eval_interval'] == 0:
-			test_acc = evaluate(slot_model, dwn_model, test_dataloader, num_obj, device)
+			test_acc = evaluate(slot_model, dwn_model, test_dataloader, num_slots, device)
 			print('Average test accuracy>>>', test_acc)
 			best_test_acc = max(best_test_acc, test_acc)
 
 	log.info('Training complete in ' + '{:.2f}'.format(time.time() - start) + 's')
 
-	ckpt_path = os.path.join('checkpoints', 'slot_dwn_rm_' + str(num_relations) + '.pth')
+	check_path(save_dir)
+	ckpt_path = os.path.join(save_dir, 'slot_dwn_rm_' + str(num_relations) + '.pth')
 	torch.save({'dwn_state_dict': dwn_model.state_dict()}, ckpt_path)
 	log.info('Saved ' + ckpt_path)
 
 	if data_cfg.get('transfer_path'):
 		log.info('Evaluating on transfer set...')
 		transfer_data = RMDataset(data_cfg['transfer_path'], num_relations, img_res)
-		transfer_dataloader = torch.utils.data.DataLoader(transfer_data, batch_size=cfg['batch_size'],
+		transfer_dataloader = torch.utils.data.DataLoader(transfer_data, batch_size=optim_cfg['batch_size'],
 								shuffle=False, num_workers=data_cfg['num_workers'])
 		print('Number of samples in transfer set>>', len(transfer_data))
-		transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_obj, device)
+		transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_slots, device)
 		print('Transfer test accuracy>>>', transfer_acc)
-
-
-if __name__ == '__main__':
-	main()

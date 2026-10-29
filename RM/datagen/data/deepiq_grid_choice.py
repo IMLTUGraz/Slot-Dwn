@@ -8,13 +8,16 @@ Panels are saved as arrays in a .npz per sample.
 Requirements: cairosvg, numpy, Pillow, torchvision, tqdm
 
 Usage:
-    python generate_grid_choice.py --root {root} --num-samples 5000 --num-relations 1 --split train
+    python generate_grid_choice.py --root {root} --num-samples 5000 --num-relations 1 --split g-set --ext train
 
-Output: {root}/{folder}/{num_relations}/{split}/{i}.npz
-            keys: panels (5,H,W,1) uint8, 
+--split selects the shapes: g-set uses the train shapes, s-set the held-out shapes.
+--ext: train or test
+
+Output: {root}/{folder}/{num_relations}/{split}-{ext}/{i}.npz
+            keys: panels (5,H,W,1) uint8,
                   relations (0-d object array of the selected dict),
                   answer (int)
-            + {root}/{folder}/{num_relations}/{split}/annotations.json
+            + {root}/{folder}/{num_relations}/{split}-{ext}/annotations.json
 """
 
 import json, os, random
@@ -96,9 +99,10 @@ class DeepIQGridChoice:
         folder: str,
         num_relations: int,
         split: str,
+        ext: str,
         resolution: tuple[int, int] = (256, 256)
     ):
-        out_dir = f'{root}/{folder}/{num_relations}/{split}'
+        out_dir = f'{root}/{folder}/{num_relations}/{split}-{ext}'
         os.makedirs(out_dir, exist_ok=True)
         annotations = {}
         for i in tqdm(range(num_samples), total=num_samples, desc='generate'):

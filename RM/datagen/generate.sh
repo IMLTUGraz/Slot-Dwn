@@ -5,13 +5,23 @@
 #SBATCH --error=log-%j.e
 #SBATCH --cpus-per-task 8
 #SBATCH --mem 4GB
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 
 module load Miniforge3
 eval "$(conda shell.bash hook)"
 
 conda activate $DATA/envs/AVR
 
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 1 --split train
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 2 --split train
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 3 --split train
+# g-set (train shapes): train and test samples
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 1 --split g-set --ext train
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 2 --split g-set --ext train
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 3 --split g-set --ext train
+
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 1 --split g-set --ext test
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 2 --split g-set --ext test
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 3 --split g-set --ext test
+
+# s-set (held-out shapes)
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 1 --split s-set --ext test
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 2 --split s-set --ext test
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 3 --split s-set --ext test
