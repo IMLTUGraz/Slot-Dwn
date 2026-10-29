@@ -4,8 +4,8 @@ import setuptools
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CUDAExtension, CppExtension
 
-cpp_dir = os.path.join('dwn_source', 'torch_dwn', 'custom_operators', 'cpp')
-cuda_dir = os.path.join('dwn_source', 'torch_dwn', 'custom_operators', 'cuda')
+cpp_dir = os.path.join('torch_dwn', 'custom_operators', 'cpp')
+cuda_dir = os.path.join('torch_dwn', 'custom_operators', 'cuda')
 
 ext_modules = []
 
@@ -45,8 +45,7 @@ setup(
     author_email="alanbacellar@gmail.com",
     description="Differentiable Weightless Neural Networks (DWN) PyTorch Module",
     url="https://github.com/alanbacellar/DWN",
-    package_dir={"": "src"},
-    packages=setuptools.find_packages(where="src"),
+    packages=setuptools.find_packages(where="."),
     ext_modules=ext_modules,
     cmdclass={'build_ext': BuildExtension},
     install_requires=[

@@ -1,5 +1,4 @@
-# The implementation of MH-DWN is built upon *Differentiable Weightless Neural Networks* 
-### (https://github.com/alanbacellar/DWN/tree/main)
+## The implementation of MH-DWN is built upon *Differentiable Weightless Neural Networks* (https://github.com/alanbacellar/DWN/tree/main)
 
 This `torch_dwn` package extends the original `LUTLayer` with a **sparse (subset) learnable mapping** (`mapping='subset-learnable'`), utilities to **freeze** a trained mapping into a fixed one, and **binary LUT export**.
 
@@ -7,9 +6,14 @@ This `torch_dwn` package extends the original `LUTLayer` with a **sparse (subset
 
 ## Installation
 
+Run from the `dwn_source/` directory:
+
 ```bash
+cd dwn_source
 pip install . --no-build-isolation
 ```
+
+`torch_dwn/build_dwn.sh` is an example SLURM build script; submit it from `dwn_source/`.
 
 Requirements: CUDA and PyTorch (matching the CUDA version). The LUT forward/backward pass is a CUDA kernel (`efd_cuda`), so layers and inputs must be on a GPU.
 
