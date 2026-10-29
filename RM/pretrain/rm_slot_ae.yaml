@@ -33,6 +33,6 @@ train:
   val_interval: 5000
  
 logging:
-  model_name: RM_enc64-dec8-k11-aug
-  ckpt_dir: checkpoints/RM/
-  log_dir: sae_logs/
+  model_name: rm_enc64-dec8-k11-aug
+  ckpt_dir: checkpoints/
+  log_dir: rm_sae_logs/

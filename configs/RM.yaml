@@ -1,0 +1,37 @@
+batch_size: 16
+seed: 42
+
+slot_ae:
+  ckpt: checkpoints/enc64-dec8-k11-aug-final.pth.tar
+  num_obj: 9
+
+data:
+  train_path: '$SCRATCH/deepiq_g_train'
+  test_path: '$SCRATCH/deepiq_g_test'
+  transfer_path: '$SCRATCH/deepiq_s_set'
+  num_workers: 4
+
+dwn:
+  dwn_heads: 4
+  dwn_hid: 2048
+  dwn_num_layers: 2
+  dwn_levels: 5
+  tau: 0.07
+  n: 4
+  mapping_type: paired
+  lm_tau: 0.001
+  first_layer_heads: 2
+  use_subset_lm: true
+  subset_lm_mode: strided
+  pool_size: 100
+
+optim:
+  learning_rate: 0.01
+  min_lr: 0.000001
+  num_epochs: 100
+
+train:
+  device: 0
+  no_cuda: false
+  log_interval: 10
+  eval_interval: 5

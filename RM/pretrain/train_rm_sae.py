@@ -17,8 +17,6 @@ from torchvision.transforms import transforms
 import torchvision.transforms.functional as tf
 import torchvision.utils as vutils
 from torch.utils.data import Dataset
-import wandb
-from torch.utils.tensorboard import SummaryWriter
 
 from slot_ae import SlotAutoEncoder
 from util import log, check_path
@@ -27,7 +25,7 @@ from util import log, check_path
 class RMDataset(Dataset):
 	def __init__(self, root_dir, img_size, split='train', augment=True):
 		self.root = os.path.expandvars(root_dir)
-		self.paths = sorted(glob.glob(os.path.join(self.root, '*', split, '*.png')))
+		self.paths = sorted(glob.glob(os.path.join(self.root, '*', split, '*.npz')))
 		self.img_size = img_size
 		self.train = split == 'train' and augment
 		self.resize = transforms.Resize((img_size, img_size))
@@ -40,7 +38,8 @@ class RMDataset(Dataset):
 	def __getitem__(self, idx):
 		# get the img path using idx and read it
 		# assign to panel variable
-		panel = np.array(Image.open(self.paths[idx]))
+		with np.load(self.paths[idx]) as data:
+			panel = data['panels'][0, ..., 0]  # (1, H, W, 1) -> (H, W)
 		image = self.resize(Image.fromarray(panel.astype(np.uint8)))
 		brightness_factor = 1
 		if self.train:
@@ -62,38 +61,6 @@ class RMDataset(Dataset):
 		return img
 
 
-def visualize(image, recon_combined, recons, masks, num_slots, N=8):
-	"""
-	Tiles input / combined recon / per-slot recon into a single grid image for tensorboard.
-
-	Args:
-		image: (B, C, H, W)
-		recon_combined: (B, C, H, W)
-		recons: (B, S, H, W, C)
-		masks: (B, S, H, W, 1)
-	"""
-	N = min(N, image.shape[0])
-
-	image = image[:N].detach().float().cpu().clamp(0., 1.)
-	recon_combined = recon_combined[:N].detach().float().cpu().clamp(0., 1.)
-
-	# per-slot composite: slot recon where attended, white (=1.) background elsewhere
-	slot_recons = (recons[:N] * masks[:N] + (1. - masks[:N])).detach().float().cpu().clamp(0., 1.)
-	slot_recons = slot_recons.permute(0, 1, 4, 2, 3)  # (N, S, C, H, W)
-
-	# tile
-	tiles = torch.cat((
-		image[:, None, :, :, :],
-		recon_combined[:, None, :, :, :],
-		slot_recons,
-	), dim=1).flatten(end_dim=1)
-
-	# grid
-	grid = vutils.make_grid(tiles, nrow=(1 + 1 + num_slots), pad_value=0.8)
-
-	return grid
-
-
 def save_checkpoint(slot_model, cfg, it, ckpt_path):
 	check_path(os.path.dirname(ckpt_path))
 	torch.save({
@@ -103,16 +70,67 @@ def save_checkpoint(slot_model, cfg, it, ckpt_path):
 	}, ckpt_path)
 
 
+def load_slot_model(ckpt_path, device):
+	"""Builds the model from the model config saved in the checkpoint, not from the yaml config."""
+	ckpt = torch.load(ckpt_path, map_location=device)
+	model_cfg = ckpt['cfg']['model']
+	slot_model = SlotAutoEncoder(**model_cfg).to(device)
+	slot_model.load_state_dict(ckpt['slot_model_state_dict'])
+	return slot_model, model_cfg, ckpt['iter']
+
+
+def visualize_recon(image, recon_combined, recons, masks, save_path=None):
+	"""
+	Visualizes the input, the combined reconstruction and the per-slot reconstructions.
+
+	Args:
+		image: (C, H, W)
+		recon_combined: (C, H, W)
+		recons: (S, H, W, C)
+		masks: (S, H, W, 1)
+		save_path: optional output path.
+	Returns the figure.
+	"""
+
+	image = image.detach().float().cpu().clamp(0., 1.)[0].numpy()
+	recon_combined = recon_combined.detach().float().cpu().clamp(0., 1.)[0].numpy()
+	slot_recons = (recons * masks + (1. - masks)).detach().float().cpu().clamp(0., 1.)[..., 0].numpy()  # (S, H, W)
+	tiles = [image, recon_combined] + list(slot_recons)
+
+	def frame(ax, color='0.35', lw=0.8):
+		ax.set_xticks([])
+		ax.set_yticks([])
+		for spine in ax.spines.values():
+			spine.set_edgecolor(color)
+			spine.set_linewidth(lw)
+
+	cell, gap, sep = 1.2, 0.12, 0.3
+	width = len(tiles) * cell + (len(tiles) - 1) * gap + sep
+	fig = plt.figure(figsize=(width, cell))
+
+	x = 0.
+	for i, tile in enumerate(tiles):
+		ax = fig.add_axes([x / width, 0, cell / width, 1])
+		ax.imshow(tile, cmap='gray', vmin=0, vmax=1)
+		frame(ax)
+		x += cell + gap + (sep if i == 1 else 0.)  # separate the slots from the input and the reconstruction
+
+	if save_path is not None:
+		fig.savefig(save_path, dpi=300, bbox_inches='tight')
+		plt.close(fig)
+	return fig
+
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='rm_slot_ae.yaml', type=str, help='path to yaml config file')
-parser.add_argument('--ckpt', default=None, type=str, help='checkpoint to load model weights from; training resumes from its saved iteration')
+parser.add_argument('--ckpt', default=None, type=str, help='checkpoint to load the model (config and weights) from. Training resumes from its saved iteration')
 parser.add_argument('--visualize', action='store_true', help='skip training: load --ckpt and save a matplotlib slot reconstruction figure')
 parser.add_argument('--vis-out', default='slot_recon.pdf', type=str, help='output path prefix of the --visualize figures; sample n is saved to <prefix>_<n>.pdf')
 parser.add_argument('--vis-n', default=16, type=int, help='number of random samples drawn by --visualize')
 args = parser.parse_args()
 if args.visualize and args.ckpt is None:
-	parser.error('--visualize requires --ckpt')
+	parser.error('--visualize requires checkpoint via --ckpt')
 
 with open(args.config, 'r') as f:
 	cfg = yaml.safe_load(f)
@@ -127,6 +145,20 @@ log_cfg = cfg['logging']
 use_cuda = not train_cfg['no_cuda'] and torch.cuda.is_available()
 device = torch.device("cuda:" + str(train_cfg['device']) if use_cuda else "cpu")
 use_amp = optim_cfg['amp'] and use_cuda
+
+start_iter = 0
+if args.ckpt is not None:
+	log.info('Loading checkpoint ' + args.ckpt + '...')
+	slot_model, model_cfg, start_iter = load_slot_model(args.ckpt, device)
+	if model_cfg != cfg['model']:
+		log.warning('Saved config of the checkpoint differs from given args' + args.config + ', using the checkpoint\'s')
+	cfg['model'] = model_cfg
+	log.info('Loaded checkpoint (iter ' + str(start_iter) + ')')
+else:
+	log.info('Building model...')
+	slot_model = SlotAutoEncoder(**model_cfg).to(device)
+
+num_slots = model_cfg['num_slots']
 
 log.info('Loading RM dataset from ' + data_cfg['path'] + '...')
 
@@ -145,24 +177,20 @@ test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=cfg['batch_s
 print("Number of samples in training set>>", len(train_data))
 print("Number of samples in test set>>", len(test_data))
 
-log.info('Building model...')
-slot_model = SlotAutoEncoder(
-	**model_cfg
-).to(device)
-
-num_slots = model_cfg['num_slots']
-
-start_iter = 0
-if args.ckpt is not None:
-	ckpt = torch.load(args.ckpt, map_location=device)
-	slot_model.load_state_dict(ckpt['slot_model_state_dict'])
-	start_iter = ckpt['iter']
-	log.info('Loaded checkpoint ' + args.ckpt + ' (iter ' + str(start_iter) + ')')
+if args.visualize:
+	slot_model.eval()
+	out_prefix = os.path.splitext(args.vis_out)[0]
+	check_path(os.path.dirname(out_prefix) or '.')
+	with torch.no_grad():
+		for n, idx in enumerate(random.sample(range(len(test_data)), min(args.vis_n, len(test_data)))):
+			img = test_data[idx].unsqueeze(0).to(device).float()
+			recon_combined, recons, masks, _, _, _ = slot_model(img)
+			out = out_prefix + '_' + str(n) + '.pdf'
+			visualize_recon(img[0], recon_combined[0], recons[0], masks[0], save_path=out)
+			log.info('Saved ' + out)
+	sys.exit()
 
 mse_criterion = nn.MSELoss()
-
-log.info('Setting up optimizer...')
-optimizer = optim.Adam(slot_model.parameters(), lr=optim_cfg['learning_rate'])
 
 
 def lr_lambda(step):
@@ -179,25 +207,22 @@ def lr_lambda(step):
 		return optim_cfg['decay_rate'] ** (decay_step / optim_cfg['decay_steps'])
 	return 1.0
 
+log.info('Setting up optimizer...')
+optimizer = optim.Adam(slot_model.parameters(), lr=optim_cfg['learning_rate'])
 
 for group in optimizer.param_groups:
 	group.setdefault('initial_lr', group['lr'])
+
 lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda, last_epoch=start_iter - 1)
-
-run = wandb.init(entity=log_cfg['wandb_entity'], project=log_cfg['wandb_project'], config={**model_cfg, **optim_cfg}, sync_tensorboard=True)
-run.define_metric("iter", hidden=True)
-run.define_metric("train/*", step_metric="iter")
-run.define_metric("val/*", step_metric="iter", summary="min,max")
-
-tb_log_dir = os.path.join(log_cfg['log_dir'], log_cfg['model_name'])
-check_path(tb_log_dir)
-writer = SummaryWriter(log_dir=tb_log_dir)
 
 log.info('---Model---')
 log.info(slot_model)
 print('Params', sum(p.numel() for p in slot_model.parameters() if p.requires_grad))
 log.info('Training begins...')
 start = time.time()
+
+vis_dir = os.path.join(log_cfg['log_dir'], 'vis')
+check_path(vis_dir)
 
 best_val_loss = float('inf')
 train_iter = iter(train_dataloader)
@@ -230,17 +255,10 @@ for it in range(start_iter + 1, max_iters + 1):
 				  '[LR = ' + '{:.6f}'.format(optimizer.param_groups[0]['lr']) + ']'
 				  )
 
-		run.log({
-			'train/mse_loss': mse_loss,
-			'train/lr': optimizer.param_groups[0]['lr'],
-			'iter': it,
-		})
-		writer.add_scalar('train/mse_loss', mse_loss, it)
-		writer.add_scalar('train/lr', optimizer.param_groups[0]['lr'], it)
-
 	if it % train_cfg['visualize_interval'] == 0:
-		grid = visualize(img, recon_combined, recons, masks, num_slots=num_slots)
-		writer.add_image('train/recon', grid, it)
+		out = os.path.join(vis_dir, 'train_iter' + str(it) + '.png')
+		visualize_recon(img[0], recon_combined[0], recons[0], masks[0], save_path=out)
+		log.info('Saved ' + out)
 
 	if it % train_cfg['val_interval'] == 0:
 		slot_model.eval()
@@ -256,15 +274,11 @@ for it in range(start_iter + 1, max_iters + 1):
 				all_val_mse_loss += val_loss.item()
 
 				if batch_idx == vis_batch_idx:
-					grid = visualize(val_img, val_recon_combined, val_recons, val_masks, num_slots=num_slots)
-					writer.add_image('val/recon', grid, it)
+					out = os.path.join(vis_dir, 'val_iter' + str(it) + '.png')
+					visualize_recon(val_img[0], val_recon_combined[0], val_recons[0], val_masks[0], save_path=out)
+					log.info('Saved ' + out)
 
 		val_mse_loss = all_val_mse_loss / len(test_dataloader)
-		run.log({
-			'val/mse_loss': val_mse_loss,
-			'iter': it,
-		})
-		writer.add_scalar('val/mse_loss', val_mse_loss, it)
 		print("Average val MSE loss>>>", val_mse_loss)
 
 		if val_mse_loss < best_val_loss:
@@ -276,5 +290,4 @@ for it in range(start_iter + 1, max_iters + 1):
 final_ckpt_path = os.path.join(log_cfg['ckpt_dir'], log_cfg['model_name'] + '-final.pth.tar')
 save_checkpoint(slot_model, cfg, max_iters, final_ckpt_path)
 log.info('Saved final checkpoint to ' + final_ckpt_path)
-writer.close()
 log.info('Training complete in ' + '{:.2f}'.format(time.time() - start) + 's')
