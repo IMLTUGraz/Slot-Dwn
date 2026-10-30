@@ -1,9 +1,10 @@
-batch_size: 16
-seed: 42
+num_relations: 1    # number of relations in the RM problems: 1 | 2 | 3
+num_obj: 9          # actual number of objects: K'
+seed: 42    # used only for deterministic slot attention. any arbitrary seed will work.
 
+# ---- slot attention encoder (frozen, pretrained) path ----
 slot_ae:
-  ckpt: checkpoints/enc64-dec8-k11-aug-final.pth.tar
-  num_obj: 9
+  ckpt: RM/sae_checkpoints/enc64-dec8-k11-aug-final.pth.tar
 
 data:
   train_path: '$SCRATCH/deepiq_g_train'
@@ -11,6 +12,7 @@ data:
   transfer_path: '$SCRATCH/deepiq_s_set'
   num_workers: 4
 
+# ---- DWN reasoner ----
 dwn:
   dwn_heads: 4
   dwn_hid: 2048
@@ -25,7 +27,9 @@ dwn:
   subset_lm_mode: strided
   pool_size: 100
 
+# ---- optimization ----
 optim:
+  batch_size: 16
   learning_rate: 0.01
   min_lr: 0.000001
   num_epochs: 100
@@ -35,3 +39,5 @@ train:
   no_cuda: false
   log_interval: 10
   eval_interval: 5
+
+ckpt_dir: RM/slot_dwn_rm/

@@ -2,8 +2,8 @@
 seed: 42                     # used only for deterministic slot attention. any arbitrary seed will work.
 
 # ---- data ----
-path: O3/data/               # holds <data_name>-o3-{train,test}.npz (generate with O3/dsprites.py)
-data_name: orientation       # orientation | orientation-2obj
+path: O3/data/
+data_name: orientation       # task data (O3-easy)
 num_obj: 1                   # objects per panel (slots passed to the DWN)
 train_size: 100             # training samples
 val_size: 20                # validation samples
@@ -11,7 +11,7 @@ split_seed: -1               # > 0 for a fixed train/val split, otherwise random
 img_size: 128
 
 # ---- slot attention encoder (frozen, pretrained) from OCRA ----
-slot_checkpoint: ART/ocra-art.pth.tar
+slot_checkpoint: O3/ocra-art.pth.tar
 num_slots: 6
 num_iterations: 3
 hid_dim: 64

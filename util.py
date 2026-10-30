@@ -33,8 +33,7 @@ log.addHandler(ch)
 
 
 def check_path(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
+    os.makedirs(path, exist_ok=True)
 
 def fill_image(all_imgs, idx, full_img, p):
 	h = all_imgs[idx].shape[0]

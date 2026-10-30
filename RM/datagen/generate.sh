@@ -13,15 +13,15 @@ eval "$(conda shell.bash hook)"
 conda activate $DATA/envs/AVR
 
 # g-set (train shapes): train and test samples
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 1 --split g-set --ext train
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 2 --split g-set --ext train
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 3 --split g-set --ext train
+python generate_grid_choice.py --root deepiq_g_train --num-samples 5000 --num-relations 1 --split g-set --ext train
+python generate_grid_choice.py --root deepiq_g_train --num-samples 5000 --num-relations 2 --split g-set --ext train
+python generate_grid_choice.py --root deepiq_g_train --num-samples 5000 --num-relations 3 --split g-set --ext train
 
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 1 --split g-set --ext test
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 2 --split g-set --ext test
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test --num-samples 500 --num-relations 3 --split g-set --ext test
+python generate_grid_choice.py --root deepiq_g_test --num-samples 500 --num-relations 1 --split g-set --ext test
+python generate_grid_choice.py --root deepiq_g_test --num-samples 500 --num-relations 2 --split g-set --ext test
+python generate_grid_choice.py --root deepiq_g_test --num-samples 500 --num-relations 3 --split g-set --ext test
 
 # s-set (held-out shapes)
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 1 --split s-set --ext test
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 2 --split s-set --ext test
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set --num-samples 500 --num-relations 3 --split s-set --ext test
+python generate_grid_choice.py --root deepiq_s_set --num-samples 500 --num-relations 1 --split s-set --ext test
+python generate_grid_choice.py --root deepiq_s_set --num-samples 500 --num-relations 2 --split s-set --ext test
+python generate_grid_choice.py --root deepiq_s_set --num-samples 500 --num-relations 3 --split s-set --ext test

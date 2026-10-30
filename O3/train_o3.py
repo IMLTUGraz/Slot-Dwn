@@ -105,7 +105,7 @@ def evaluate(loader, epoch, slot_model, dwn_model, ce_criterion, num_obj, device
 
 	test_loss = all_test_loss / len(loader)
 	test_acc = all_test_acc / len(loader)
-	print(f"Epoch {epoch}, Average {split} accuracy>>>", test_acc)
+	print(f"Epoch {epoch} - Average {split} accuracy {test_acc}")
 	return test_acc, test_loss
 
 
@@ -220,14 +220,14 @@ def train(args):
 
 		lr_scheduler.step()
 
-		epoch_val_acc, epoch_val_loss = evaluate(val_loader, epoch, slot_model, dwn_model, ce_criterion,
+		_, epoch_val_loss = evaluate(val_loader, epoch, slot_model, dwn_model, ce_criterion,
 												 num_obj, device, split='val')
-		print(f"Epoch {epoch} Average val cross entropy loss>>", epoch_val_loss)
 
 		early_stop = False
 		if epoch_val_loss < best_val_loss - args.min_delta:
 			best_val_loss = epoch_val_loss
 			patience_counter = 0
+			best_test_acc, _ = evaluate(test_loader, epoch, slot_model, dwn_model, ce_criterion, num_obj, device)
 		else:
 			patience_counter += 1
 			if patience_counter >= args.patience:
@@ -236,12 +236,8 @@ def train(args):
 							' for ' + str(args.patience) + ' epochs.')
 				early_stop = True
 
-		if early_stop or epoch % args.save_interval == 0:
-			test_acc, _ = evaluate(test_loader, epoch, slot_model, dwn_model, ce_criterion, num_obj, device)
-			best_test_acc = max(best_test_acc, test_acc)
-			print("Average test accuracy>>>", best_test_acc)
-
 		if early_stop:
 			break
 
 	log.info('Training complete in ' + '{:.2f}'.format(time.time() - start) + 's')
+	log.info('Test accuracy at best validation loss: ' + '{:.2f}'.format(best_test_acc))

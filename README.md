@@ -17,6 +17,7 @@
 .
 ├── ART/              # Abstract Reasoning Tasks (same_diff, RMTS, dist3, identity_rules)
 ├── O3/               # Odd-Orientation-Out tasks (O3-Easy, O3-Hard)
+├── RM/               # Relational Matrices task + slot attention pretraining for RM
 ├── configs/          # YAML configs per task
 ├── dwn_source/       # Updated Differentiable Weightless Network (torch_dwn) source code, with sparse learnable mapping
 ├── mh_dwn/dwn.py     # Multi-Head implementation of DWNs
@@ -26,14 +27,14 @@
 
 ## Installation
 
-Locally build and install the `torch_dwn` package under `dwn_source`:
+Locally build and install the `torch_dwn` package from `dwn_source`:
 
 ```bash
-cd dwn_source/torch_dwn
+cd dwn_source
 pip install . --no-build-isolation
 ```
 
-See `dwn_source/torch_dwn/build_dwn.sh` for an example SLURM build script and `dwn_source/README.md` for detailed usage and example.
+See `dwn_source/torch_dwn/build_dwn.sh` for an example SLURM build script and `dwn_source/torch_dwn/README.md` for detailed usage and example.
 
 ---
 
@@ -41,6 +42,7 @@ See `dwn_source/torch_dwn/build_dwn.sh` for an example SLURM build script and `d
 
 - [Abstract Reasoning Tasks (ART)](#1-abstract-reasoning-tasks-art)
 - [Odd-Orientation-Out (O3)](#2-odd-orientation-out-o3)
+- [Relational Matrices (RM)](#3-relational-matrices-rm)
 
 ---
 
@@ -59,7 +61,7 @@ The scripts use a pretrained Slot Attention autoencoder (`ART/slot_ae_ocra.py`, 
 
 ### Data
 
-The shape images must be downloaded from the [OCRA repository](https://github.com/Shanka123/OCRA/tree/main/imgs) and must placed under `ART/data/`:
+The shape images must be downloaded from the [OCRA repository](https://github.com/Shanka123/OCRA/tree/main/imgs) and must be placed under `ART/data/`:
 
 ```bash
 git clone https://github.com/Shanka123/OCRA.git /tmp/OCRA
@@ -168,10 +170,103 @@ Config options for O3 tasks (the slot attention, optimization and MH-DWN options
 |-----|-------------|
 | `path` | Directory with the `.npz` data files |
 | `data_name` | `orientation` or `orientation-2obj`, files are named `<data_name>-o3-{train,test}.npz` |
-| `split_seed` | Seed for the train/validation split, random if not given |
+| `split_seed` | Optinal seed for fixing the train/validation split. Otherwise it is random |
 | `patience` / `min_delta` | Early stopping on the validation loss |
 
 > With a single object (`o3_easy`) there are no cross-object pairs, so the slot is paired with itself as input to the `U_rel` layer.
+
+---
+
+## 3. Relational Matrices (RM)
+
+Each sample is a 3x3 grid of shapes whose attributes (shape, rotation, zoom, grayscale) follow row, column or diagonal rules, with the bottom-right cell missing. Five full candidate grids are given (1 correct, 4 distractors), and the model must pick the right one. The number of relations that are changed in a problem is `num_relations` (1, 2 or 3).
+
+The scripts are under `RM/`. Every candidate grid is encoded by a pretrained Slot Attention autoencoder (`RM/slot_ae.py`, pretrained checkpoint `RM/sae_checkpoints/enc64-dec8-k11-aug-final.pth.tar`) and scored independently by the MH-DWN model (`mh_dwn/dwn.py`). The candidate with the highest score is the prediction.
+
+Two sets of problems are used:
+
+- **G-set** (`--split g-set`): shapes seen in training. It is split into a train and a test part.
+- **S-set** (`--split s-set`): problems built from held-out shapes only, to measure generalization to unseen shapes. It is used as the transfer set after training.
+
+### Data
+
+The data generators are under `RM/datagen/`. `generate.sh` is an example SLURM script, which generates all three sets for 1, 2 and 3 relations. Example generation:
+
+```bash
+cd RM/datagen
+
+# G-set train and test samples
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 1 --split g-set --ext train
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test  --num-samples 500 --num-relations 1 --split g-set --ext test
+
+# S-set samples
+python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set   --num-samples 500 --num-relations 1 --split s-set --ext test
+```
+
+`--split` selects the shapes (`g-set` uses the train shapes, `s-set` the held-out ones), and `--ext` (`train` or `test`) is dataset. The samples are saved as `<root>/<folder>/<num_relations>/<split>-<ext>/<i>.npz`, e.g., `$SCRATCH/deepiq_g_train/1/g-set-train/0.npz`. Repeat each command with `--num-relations 2` and `3` for the other problems.
+
+Change `--root` to the folder you want, and you can update the paths for G-set train & test and S-set (transfer set) from `configs/RM.yaml`, respectively.
+
+### Training
+
+Same as the other tasks, it is run from the repository root. The number of relations is set by `num_relations` in `configs/RM.yaml`:
+
+```bash
+python main.py --task RM
+```
+
+| `--task` | Config               | Training script        |
+|----------|----------------------|------------------------|
+| `RM`     | `configs/RM.yaml`    | `RM/train_rm_dwn.py`   |
+
+The test accuracy is reported every `eval_interval` epochs, and the accuracy on the S-set at the end. The trained DWN is saved to `ckpt_dir` (`RM/slot_dwn_rm/slot_dwn_rm_<num_relations>.pth` by default).
+
+Config options for RM (the MH-DWN options are listed below):
+
+| Key | Description |
+|-----|-------------|
+| `num_relations` | Number of relations in the problems: 1, 2 or 3 |
+| `slot_ae.ckpt` | Pretrained slot autoencoder checkpoint. Its model config is read from the checkpoint |
+| `num_obj` | Actual number of objects, passed to the DWN, i.e., K'. |
+| `seed` | Seed of the (frozen) slot attention encoder, used only for its deterministic initial slots |
+| `data.train_path` / `test_path` / `transfer_path` | Folders of the G-set train, G-set test and S-set samples |
+| `data.num_workers` | Data loader workers |
+| `dwn` | MH-DWN hyperparams, see below |
+| `optim` | `batch_size`, `learning_rate`, `min_lr` (cosine annealing) and `num_epochs` |
+| `train` | `device`, `no_cuda`, `log_interval` and `eval_interval` (epochs between test evaluations) |
+| `ckpt_dir` | Folder the trained DWN is saved to |
+
+### Training the slot autoencoder from scratch
+
+This step is optional, if you want to pretrain the slot autoencoder from scratch with `RM/pretrain/train_rm_sae.py`:
+
+1. Generate images with randomly placed shapes. They are written to `<root>/<split>/<ext>/`, e.g., `$SCRATCH/deepiq_random/g-set/train/0.npz`:
+
+   ```bash
+   cd RM/datagen
+   python generate_random.py --root $SCRATCH/deepiq_random --num-samples 150000 --split g-set --ext train
+   python generate_random.py --root $SCRATCH/deepiq_random --num-samples 3000 --split g-set --ext test
+   ```
+
+2. Set `data.path` in `RM/pretrain/rm_slot_ae.yaml` to the `--root` above (`$SCRATCH/deepiq_random/`).
+
+3. Train, from `RM/pretrain/` (the paths in the yaml are relative to it):
+
+   ```bash
+   cd RM/pretrain
+   python train_rm_sae.py
+   ```
+
+   | Argument | Description |
+   |----------|-------------|
+   | `--config` | Path of the yaml config, default `rm_slot_ae.yaml` |
+   | `--ckpt` | Checkpoint to load the model (its saved config and weights) from. Training resumes from its saved iteration |
+   | `--visualize` | Skip training: load `--ckpt` and save slot reconstruction figures |
+   | `--vis-out` / `--vis-n` | Output prefix of the figures, and number of random test samples |
+
+   The checkpoints `<model_name>-best.pth.tar` and `<model_name>-final.pth.tar` are saved to `ckpt_dir` (`../sae_checkpoints/`, i.e., `RM/sae_checkpoints/`), and the reconstructions to `log_dir/vis` (`rm_sae_logs/vis`, i.e., `RM/pretrain/rm_sae_logs/vis`).
+
+4. To use the new autoencoder, set `slot_ae.ckpt` in `configs/RM.yaml` to its checkpoint (relative to the repository root, e.g., `RM/sae_checkpoints/<model_name>-final.pth.tar`).
 
 ---
 MH-DWN options:
@@ -182,7 +277,10 @@ MH-DWN options:
 | `dwn_hid` | LUTs per layer, (after `U_rel` layer), halved in each layer after|
 | `dwn_num_layers` | Number of DWN layers |
 | `dwn_levels` | Thermometer encoding levels |
+| `tau` | Pre-softmax temperature of the output (GroupSum) layer |
 | `n` | LUT input arity |
+| `lm_tau` | Softmax temperature for learnable mappings |
+| `first_layer_heads` | Number of LUT heads in the first (`U_rel`) layer |
 | `mapping_type` | `one-to-one` or `paired` mapping for binary slot embeddings |
 | `use_subset_lm` | Use the sparse (subset) learnable mapping (True/False)|
 | `subset_lm_mode` | `random`, `strided` or `block` |

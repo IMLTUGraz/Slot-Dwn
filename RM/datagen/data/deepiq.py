@@ -2,11 +2,9 @@
 Relational DeepIQ panels: 3x3 matrices whose shape / rotation / zoom / grayscale follow
 row, column, diagonal or constant rules.
 
-Requirements: cairosvg, numpy, Pillow, torchvision, tqdm
-
 Usage:
-    python data/deepiq.py --root {root} --num-samples 10000 --num-relations 1 --split g-set --ext train
-Output: {root}/{folder}/{num_relations}/{split}-{ext}/{i}.png + annotations.json
+    python deepiq.py --root {root} --num-samples 10000 --num-relations 1 --split g-set --ext train
+Output: {root}/{num_relations}/{split}/{ext}/{i}.png + annotations.json
 
 --split selects the shapes: g-set uses the train shapes, s-set the held-out shapes.
 --ext: train or test
@@ -146,14 +144,13 @@ class DeepIQ:
         cls,
         root: str,
         num_samples: int,
-        folder: str,
         num_relations: int,
         split: str,
         ext: str,
         resolution: tuple[int, int] = (256, 256),
         fmt: str = 'png'
     ):
-        folder = f'{root}/{folder}/{num_relations}/{split}-{ext}'
+        folder = f'{root}/{num_relations}/{split}/{ext}'
         os.makedirs(folder, exist_ok=True)
         annotations = []
         for i in tqdm(range(num_samples), total=num_samples, desc='generate'):
@@ -169,7 +166,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', required=True, type=str)
     parser.add_argument('--num-samples', required=True, type=int)
-    parser.add_argument('--folder', default='deepiq', type=str)
     parser.add_argument('--num-relations', required=True, type=int, choices=[1, 2, 3])
     parser.add_argument('--split', default='g-set', choices=['g-set', 's-set'], help='g-set: train shapes, s-set: held-out shapes')
     parser.add_argument('--ext', default='train', choices=['train', 'test'])
@@ -181,6 +177,6 @@ if __name__ == '__main__':
     if args.seed is not None:
         random.seed(args.seed)
     DeepIQ.generate(
-        args.root, args.num_samples, folder=args.folder, num_relations=args.num_relations,
+        args.root, args.num_samples, num_relations=args.num_relations,
         split=args.split, ext=args.ext, resolution=(args.resolution, args.resolution), fmt=args.format
     )

@@ -124,7 +124,7 @@ def train(args):
 	optim_cfg = args.optim
 	train_cfg = args.train
 	num_relations = args.num_relations
-	num_slots = ae_cfg['num_slots']
+	num_obj = args.num_obj
 	save_dir = args.ckpt_dir
 
 	use_cuda = not train_cfg['no_cuda'] and torch.cuda.is_available()
@@ -145,7 +145,7 @@ def train(args):
 	print('Number of samples in test set>>', len(test_data))
 
 	log.info('Building model...')
-	dwn_model = SlotDWN(slot_dim=slot_model.encoder.hidden_dim, n_slots=num_slots, out_size=1, **dwn_cfg).to(device)
+	dwn_model = SlotDWN(slot_dim=slot_model.encoder.hidden_dim, n_slots=num_obj, out_size=1, **dwn_cfg).to(device)
 	print('---Model---')
 	print(dwn_model)
 
@@ -158,7 +158,7 @@ def train(args):
 	log.info('Fitting binarization on training slots...')
 	all_slots = []
 	for img, _ in train_dataloader:
-		all_slots.append(encode_panels(slot_model, img.to(device).float(), num_slots))
+		all_slots.append(encode_panels(slot_model, img.to(device).float(), num_obj))
 	dwn_model.fit_binarization(torch.cat(all_slots, dim=0))
 
 	log.info('Training begins...')
@@ -176,7 +176,7 @@ def train(args):
 			target = target.to(device).long()
 			dwn_model.clip_luts()
 
-			slot_panels = encode_panels(slot_model, img, num_slots)
+			slot_panels = encode_panels(slot_model, img, num_obj)
 			scores = score_panels(dwn_model, slot_panels)
 			loss = ce_criterion(scores, target)
 			acc = torch.eq(scores.argmax(-1), target).float().mean().item() * 100.0
@@ -203,7 +203,7 @@ def train(args):
 		print('Average training accuracy>>', avg_train_acc)
 
 		if epoch % train_cfg['eval_interval'] == 0:
-			test_acc = evaluate(slot_model, dwn_model, test_dataloader, num_slots, device)
+			test_acc = evaluate(slot_model, dwn_model, test_dataloader, num_obj, device)
 			print('Average test accuracy>>>', test_acc)
 			best_test_acc = max(best_test_acc, test_acc)
 
@@ -220,5 +220,5 @@ def train(args):
 		transfer_dataloader = torch.utils.data.DataLoader(transfer_data, batch_size=optim_cfg['batch_size'],
 								shuffle=False, num_workers=data_cfg['num_workers'])
 		print('Number of samples in transfer set>>', len(transfer_data))
-		transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_slots, device)
+		transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_obj, device)
 		print('Transfer test accuracy>>>', transfer_acc)

@@ -15,6 +15,7 @@ TRAINERS = {
 	'identity_rules': ('ART', 'train_identity'),
 	'o3_easy': ('O3', 'train_o3'),
 	'o3_hard': ('O3', 'train_o3'),
+	'RM': ('RM', 'train_rm_dwn'),
 }
 
 

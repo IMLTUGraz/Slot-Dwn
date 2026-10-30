@@ -23,11 +23,11 @@ from util import log, check_path
 
 
 class RMDataset(Dataset):
-	def __init__(self, root_dir, img_size, split='train', augment=True):
+	def __init__(self, root_dir, img_size, split='g-set', ext='train', augment=True):
 		self.root = os.path.expandvars(root_dir)
-		self.paths = sorted(glob.glob(os.path.join(self.root, '*', '*-' + split, '*.npz')))	# <folder>/<set>-<split>/
+		self.paths = sorted(glob.glob(os.path.join(self.root, split, ext, '*.npz')))
 		self.img_size = img_size
-		self.train = split == 'train' and augment
+		self.train = ext == 'train' and augment
 		self.resize = transforms.Resize((img_size, img_size))
 		self.angles = [0, 90, 180, 270]
 		self.len = len(self.paths)  # set accordingly
@@ -124,10 +124,10 @@ def visualize_recon(image, recon_combined, recons, masks, save_path=None):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='rm_slot_ae.yaml', type=str, help='path to yaml config file')
-parser.add_argument('--ckpt', default='None', type=str, help='checkpoint to load the model (config and weights) from. Training resumes from its saved iteration')
+parser.add_argument('--ckpt', default=None, type=str, help='checkpoint to load. Training resumes from its saved iteration')
 parser.add_argument('--visualize', action='store_true', help='skip training: load --ckpt and save a matplotlib slot reconstruction figure')
-parser.add_argument('--vis-out', default='slot_recon.pdf', type=str, help='output path prefix of the --visualize figures; sample n is saved to <prefix>_<n>.pdf')
-parser.add_argument('--vis-n', default=16, type=int, help='number of random samples drawn by --visualize')
+parser.add_argument('--vis-out', default='slot_recon.pdf', type=str, help='output path prefix of the --visualize figures. sample n is saved to <prefix>_<n>.pdf')
+parser.add_argument('--vis-n', default=4, type=int, help='number of random samples drawn by --visualize')
 args = parser.parse_args()
 if args.visualize and args.ckpt is None:
 	parser.error('--visualize requires checkpoint via --ckpt')
@@ -165,8 +165,8 @@ log.info('Loading RM dataset from ' + data_cfg['path'] + '...')
 img_size = tuple(model_cfg['img_size'])
 img_res = img_size[1]
 
-train_data = RMDataset(data_cfg['path'], img_res, split='train')
-test_data = RMDataset(data_cfg['path'], img_res, split='test')
+train_data = RMDataset(data_cfg['path'], img_res, ext='train')
+test_data = RMDataset(data_cfg['path'], img_res, ext='test')
 
 train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=cfg['batch_size'],
 						shuffle=True, num_workers=data_cfg['num_workers'])

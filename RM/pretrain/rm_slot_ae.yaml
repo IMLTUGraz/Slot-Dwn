@@ -32,6 +32,6 @@ train:
   visualize_interval: 500
   val_interval: 5000
  
-log_dir: RM/pretrain/rm_sae_logs/
+log_dir: rm_sae_logs/
 ckpt_dir: RM/sae_checkpoints/
 model_name: rm_enc64-dec8-k11-aug
