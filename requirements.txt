@@ -1,5 +1,5 @@
-torch
-torchvision
+torch==2.13.0+cu130
+torchvision==0.28.0+cu130
 numpy
 pillow
 matplotlib

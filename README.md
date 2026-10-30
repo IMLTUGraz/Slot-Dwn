@@ -10,7 +10,11 @@
 - 🔍 **Odd-Orientation-Out (O3):** Finding the *odd* panel whose object has a different orientation than the others, in an easy and a hard variant.
 - 🧮 **Relational Matrices (RM):** RPM-like problems, where multiple relationships among the objects in a 3x3 grid must be inferred. In addition, similar to ART tasks, RM tasks also measure OOD generalization on heldout shapes.
 
-This code is tested with Python $\geq$ 3.11. We used Pytorch 2.13.0 compiled with CUDA version 13.0 for all the experiments.
+This code is tested with Python $\geq$ 3.11. We used Pytorch 2.13.0 compiled with CUDA version 13.0 for all the experiments. You can install the required packages via pip:
+
+```
+pip install -r requirements.txt
+```
 
 ## Repository Structure
 

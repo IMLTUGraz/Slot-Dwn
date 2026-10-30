@@ -1,4 +1,3 @@
-import json
 import logging
 from colorlog import ColoredFormatter
 import os

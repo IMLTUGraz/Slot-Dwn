@@ -3,7 +3,6 @@ import importlib
 import os
 import sys
 from argparse import Namespace
-
 import yaml
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
