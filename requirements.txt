@@ -1,0 +1,11 @@
+torch
+torchvision
+numpy
+pillow
+matplotlib
+tqdm
+pyyaml
+colorlog
+cairosvg
+typing_extensions
+setuptools
