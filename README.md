@@ -240,7 +240,7 @@ Config options for RM (the MH-DWN options are listed below):
 
 ### Training the slot autoencoder from scratch
 
-This step is optional, if you want to pretrain the slot autoencoder from scratch with `RM/pretrain/train_rm_sae.py`:
+This step is optional, if you want to pretrain the slot autoencoder from scratch with `RM/train_rm_sae.py`:
 
 1. Generate images with randomly placed shapes. They are written to `<root>/<split>/<ext>/`, e.g., `$DATA/deepiq_random/g-set/train/0.npz`:
 
@@ -250,7 +250,7 @@ This step is optional, if you want to pretrain the slot autoencoder from scratch
    python generate_random.py --root $DATA/deepiq_random --num-samples 5000 --split g-set --ext test
    ```
 
-2. Set `data.path` in `RM/pretrain/rm_slot_ae.yaml` to the `--root` above.
+2. Set `data.path` in `RM/rm_slot_ae.yaml` to the `--root` above.
 
 3. Train, from `RM/`:
 
