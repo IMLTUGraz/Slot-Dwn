@@ -11,7 +11,7 @@ model:
   iters: 3
 
 data:
-  path: '$SCRATCH/deepiq_random/'
+  path: '$DATA/deepiq_random/'
   num_workers: 8
 
 optim:
@@ -33,5 +33,5 @@ train:
   val_interval: 5000
  
 log_dir: rm_sae_logs/
-ckpt_dir: RM/sae_checkpoints/
+ckpt_dir: sae_checkpoints/
 model_name: rm_enc64-dec8-k11-aug

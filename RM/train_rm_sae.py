@@ -124,7 +124,7 @@ def visualize_recon(image, recon_combined, recons, masks, save_path=None):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='rm_slot_ae.yaml', type=str, help='path to yaml config file')
-parser.add_argument('--ckpt', default=None, type=str, help='checkpoint to load. Training resumes from its saved iteration')
+parser.add_argument('--ckpt', default='sae_checkpoints/enc64-dec8-k11-aug-final.pth.tar', type=str, help='checkpoint to load.')
 parser.add_argument('--visualize', action='store_true', help='skip training: load --ckpt and save a matplotlib slot reconstruction figure')
 parser.add_argument('--vis-out', default='slot_recon.pdf', type=str, help='output path prefix of the --visualize figures. sample n is saved to <prefix>_<n>.pdf')
 parser.add_argument('--vis-n', default=4, type=int, help='number of random samples drawn by --visualize')
@@ -182,9 +182,9 @@ if args.visualize:
 	out_prefix = os.path.splitext(args.vis_out)[0]
 	check_path(os.path.dirname(out_prefix) or '.')
 	with torch.no_grad():
-		for n, idx in enumerate(random.sample(range(len(test_data)), min(args.vis_n, len(test_data)))):
-			img = test_data[idx].unsqueeze(0).to(device).float()
-			recon_combined, recons, masks, _, _, _ = slot_model(img)
+		for n, idx in enumerate(random.sample(range(len(train_data)), min(args.vis_n, len(train_data)))):
+			img = train_data[idx].unsqueeze(0).to(device).float()
+			recon_combined, recons, masks, _, _ = slot_model(img)
 			out = out_prefix + '_' + str(n) + '.pdf'
 			visualize_recon(img[0], recon_combined[0], recons[0], masks[0], save_path=out)
 			log.info('Saved ' + out)

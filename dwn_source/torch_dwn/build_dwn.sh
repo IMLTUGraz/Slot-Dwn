@@ -2,8 +2,6 @@
 
 #SBATCH --job-name=build-dwn
 #SBATCH --gres=gpu:1
-#SBATCH -p zen4_0768_h100x4
-#SBATCH --qos zen4_0768_h100x4
 #SBATCH --cpus-per-task 8
 #SBATCH --time=00:10:00
 

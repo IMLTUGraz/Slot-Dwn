@@ -7,9 +7,7 @@ slot_ae:
   ckpt: RM/sae_checkpoints/enc64-dec8-k11-aug-final.pth.tar
 
 data:
-  train_path: '$SCRATCH/deepiq_g_train'
-  test_path: '$SCRATCH/deepiq_g_test'
-  transfer_path: '$SCRATCH/deepiq_s_set'
+  path: '$DATA/RM_problems/'
   num_workers: 4
 
 # ---- DWN reasoner ----
@@ -32,12 +30,10 @@ optim:
   batch_size: 16
   learning_rate: 0.01
   min_lr: 0.000001
-  num_epochs: 100
+  num_epochs: 50
 
 train:
   device: 0
   no_cuda: false
   log_interval: 10
   eval_interval: 5
-
-ckpt_dir: RM/slot_dwn_rm/

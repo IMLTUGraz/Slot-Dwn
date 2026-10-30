@@ -14,7 +14,7 @@ import time
 def get_feats_and_masks(slot_model, img):
 	return slot_model(img, img.device)
 
-def filter_slots(slots, masks, num_obj, txt=1):
+def filter_slots(slots, masks, num_obj):
 	# B, S, H, W, 1 = masks.shape
 	slot_dim = slots.shape[-1]
 	mask_max = masks.flatten(2).max(dim=-1).values
@@ -27,7 +27,7 @@ def filter_slots(slots, masks, num_obj, txt=1):
 	active_masks = masks.gather(dim=1, index=idx_mask).squeeze(-1)  # (B, num_obj, H, W)
 	return active_slots, active_masks, active_indices
 
-def filter_and_sort_slots(slots, masks, num_obj,  n_rows=2, n_cols=3):
+def filter_and_sort_slots(slots, masks, num_obj,  n_rows=2):
 	"""
 	Filter active slots by mask energy, then sort by 2D spatial centroid in
 	raster order (top-to-bottom primary, left-to-right secondary).
@@ -105,7 +105,7 @@ def evaluate(loader, epoch, slot_model, dwn_model, ce_criterion, num_obj, device
 
 	test_loss = all_test_loss / len(loader)
 	test_acc = all_test_acc / len(loader)
-	print(f"Epoch {epoch} - Average {split} accuracy {test_acc}")
+	log.info(f"Epoch {epoch} - Average {split} accuracy {test_acc}")
 	return test_acc, test_loss
 
 
@@ -165,7 +165,7 @@ def train(args):
 			batch_slots = []
 			for con in range(img.shape[1]):
 				_, recons, masks, feat, attn = get_feats_and_masks(slot_model, img[:, con].unsqueeze(1))
-				active_slots, _, active_idx = filter_slots(slots=feat, masks=attn, num_obj=num_obj, txt=con)
+				active_slots, *_ = filter_slots(slots=feat, masks=attn, num_obj=num_obj)
 				batch_slots.append(active_slots)
 			all_slots.append(torch.stack(batch_slots, dim=1))
 
@@ -222,6 +222,7 @@ def train(args):
 
 		_, epoch_val_loss = evaluate(val_loader, epoch, slot_model, dwn_model, ce_criterion,
 												 num_obj, device, split='val')
+		log.info(f'Epoch {epoch} Validation loss {epoch_val_loss}')
 
 		early_stop = False
 		if epoch_val_loss < best_val_loss - args.min_delta:

@@ -185,7 +185,7 @@ def train(args):
 			batch_slots = []
 			for idx in range(img.shape[1]):
 				_, recons, masks, feat, attn = get_feats_and_masks(slot_model, img[:, idx])
-				active_slots, _, active_idx = filter_slots(slots=feat, masks=attn, num_obj=num_obj)
+				active_slots, *_ = filter_slots(slots=feat, masks=attn, num_obj=num_obj)
 				batch_slots.append(active_slots)
 			all_slots.append(torch.stack(batch_slots, dim=1))
 

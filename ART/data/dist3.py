@@ -193,10 +193,6 @@ def create_task(args, train_shapes, test_shapes):
 		MC_targ = np.where(test_answer_choices[t] == img_targ_id)[0][0]
 		test_MC_seq.append(MC_seq)
 		test_MC_targ.append(MC_targ)
-
-	# Create training and test sets
-	# np.savez('/scratch/gpfs/smondal/slot_attention_reasoning/train_heldout95.npz',seq_ind = np.array(train_MC_seq), y = np.array(train_MC_targ))
-	# np.savez('/scratch/gpfs/smondal/slot_attention_reasoning/test_heldout95.npz',seq_ind = np.array(test_MC_seq), y = np.array(test_MC_targ))
 	
 	train_set = {'seq_ind': np.array(train_MC_seq), 'y': np.array(train_MC_targ)}
 	# val_set = {'seq_ind': np.array(val_MC_seq), 'y': np.array(val_MC_targ)}

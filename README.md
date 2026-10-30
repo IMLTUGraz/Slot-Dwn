@@ -10,6 +10,7 @@
 - 🔍 **Odd-Orientation-Out (O3):** Finding the *odd* panel whose object has a different orientation than the others, in an easy and a hard variant.
 - 🧮 **Relational Matrices (RM):** RPM-like problems, where multiple relationships among the objects in a 3x3 grid must be inferred. In addition, similar to ART tasks, RM tasks also measure OOD generalization on heldout shapes.
 
+This code is tested with Python $\geq$ 3.11. We used Pytorch 2.13.0 compiled with CUDA version 13.0 for all the experiments.
 
 ## Repository Structure
 
@@ -25,7 +26,7 @@
 └── util.py
 ```
 
-## Installation
+## Installation (for torch_dwn package)
 
 Locally build and install the `torch_dwn` package from `dwn_source`:
 
@@ -106,7 +107,7 @@ Config options for ART tasks:
 |-----|-------------|
 | `train_gen_method` / `test_gen_method` | Sample generating approach: `full_space` or `subsample` |
 | `n_shapes` | Total number of shapes available, default 100|
-| `m_holdout` | Number of shapes withheld during training |
+| `m_holdout` | Number of shapes withheld during training, default 95 |
 | `num_slots` | Number of slots in pretrained Slot Attention|
 | `batch_size` | Batch size |
 | `num_epochs` | Training epochs |
@@ -172,6 +173,8 @@ Config options for O3 tasks (the slot attention, optimization and MH-DWN options
 | `data_name` | `orientation` or `orientation-2obj`, files are named `<data_name>-o3-{train,test}.npz` |
 | `split_seed` | Optinal seed for fixing the train/validation split. Otherwise it is random |
 | `patience` / `min_delta` | Early stopping on the validation loss |
+| `train_size`| Number of training samples, default 1000|
+| `val_size`|  Number of validation samples, used for early stopping, default 200|
 
 > With a single object (`o3_easy`) there are no cross-object pairs, so the slot is paired with itself as input to the `U_rel` layer.
 
@@ -196,16 +199,16 @@ The data generators are under `RM/datagen/`. `generate.sh` is an example SLURM s
 cd RM/datagen
 
 # G-set train and test samples
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_train --num-samples 5000 --num-relations 1 --split g-set --ext train
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_g_test  --num-samples 500 --num-relations 1 --split g-set --ext test
+python generate_grid_choice.py --root $DATA/RM_problems --num-samples 5000 --num-relations 1 --split g-set --ext train
+python generate_grid_choice.py --root $DATA/RM_problems  --num-samples 500 --num-relations 1 --split g-set --ext test
 
 # S-set samples
-python generate_grid_choice.py --root $SCRATCH --folder deepiq_s_set   --num-samples 500 --num-relations 1 --split s-set --ext test
+python generate_grid_choice.py --root $DATA/RM_problems  --num-samples 500 --num-relations 1 --split s-set --ext test
 ```
 
-`--split` selects the shapes (`g-set` uses the train shapes, `s-set` the held-out ones), and `--ext` (`train` or `test`) is dataset. The samples are saved as `<root>/<folder>/<num_relations>/<split>-<ext>/<i>.npz`, e.g., `$SCRATCH/deepiq_g_train/1/g-set-train/0.npz`. Repeat each command with `--num-relations 2` and `3` for the other problems.
+`--split` selects the shapes (`g-set` uses the train shapes, `s-set` the held-out ones), and `--ext` (`train` or `test`) is dataset. The samples are saved as `<root>/<num_relations>/<split>/<ext>/<i>.npz`, e.g., `RM_problems/1/g-set/train/0.npz`. Repeat each command with `--num-relations 2` and `3` for the other problems.
 
-Change `--root` to the folder you want, and you can update the paths for G-set train & test and S-set (transfer set) from `configs/RM.yaml`, respectively.
+Change `--root` to the folder you want. Set the path also in `configs/RM.yaml`, respectively.
 
 ### Training
 
@@ -219,7 +222,7 @@ python main.py --task RM
 |----------|----------------------|------------------------|
 | `RM`     | `configs/RM.yaml`    | `RM/train_rm_dwn.py`   |
 
-The test accuracy is reported every `eval_interval` epochs, and the accuracy on the S-set at the end. The trained DWN is saved to `ckpt_dir` (`RM/slot_dwn_rm/slot_dwn_rm_<num_relations>.pth` by default).
+The test accuracy for G-set is reported every `eval_interval` epochs, and the accuracy on the S-set at the end.
 
 Config options for RM (the MH-DWN options are listed below):
 
@@ -229,31 +232,30 @@ Config options for RM (the MH-DWN options are listed below):
 | `slot_ae.ckpt` | Pretrained slot autoencoder checkpoint. Its model config is read from the checkpoint |
 | `num_obj` | Actual number of objects, passed to the DWN, i.e., K'. |
 | `seed` | Seed of the (frozen) slot attention encoder, used only for its deterministic initial slots |
-| `data.train_path` / `test_path` / `transfer_path` | Folders of the G-set train, G-set test and S-set samples |
+| `data.path` | Root folders containing G-set train & test and S-set. |
 | `data.num_workers` | Data loader workers |
 | `dwn` | MH-DWN hyperparams, see below |
 | `optim` | `batch_size`, `learning_rate`, `min_lr` (cosine annealing) and `num_epochs` |
 | `train` | `device`, `no_cuda`, `log_interval` and `eval_interval` (epochs between test evaluations) |
-| `ckpt_dir` | Folder the trained DWN is saved to |
 
 ### Training the slot autoencoder from scratch
 
 This step is optional, if you want to pretrain the slot autoencoder from scratch with `RM/pretrain/train_rm_sae.py`:
 
-1. Generate images with randomly placed shapes. They are written to `<root>/<split>/<ext>/`, e.g., `$SCRATCH/deepiq_random/g-set/train/0.npz`:
+1. Generate images with randomly placed shapes. They are written to `<root>/<split>/<ext>/`, e.g., `$DATA/deepiq_random/g-set/train/0.npz`:
 
    ```bash
    cd RM/datagen
-   python generate_random.py --root $SCRATCH/deepiq_random --num-samples 150000 --split g-set --ext train
-   python generate_random.py --root $SCRATCH/deepiq_random --num-samples 3000 --split g-set --ext test
+   python generate_random.py --root $DATA/deepiq_random --num-samples 150000 --split g-set --ext train
+   python generate_random.py --root $DATA/deepiq_random --num-samples 5000 --split g-set --ext test
    ```
 
-2. Set `data.path` in `RM/pretrain/rm_slot_ae.yaml` to the `--root` above (`$SCRATCH/deepiq_random/`).
+2. Set `data.path` in `RM/pretrain/rm_slot_ae.yaml` to the `--root` above.
 
-3. Train, from `RM/pretrain/` (the paths in the yaml are relative to it):
+3. Train, from `RM/`:
 
    ```bash
-   cd RM/pretrain
+   cd RM
    python train_rm_sae.py
    ```
 
@@ -264,9 +266,9 @@ This step is optional, if you want to pretrain the slot autoencoder from scratch
    | `--visualize` | Skip training: load `--ckpt` and save slot reconstruction figures |
    | `--vis-out` / `--vis-n` | Output prefix of the figures, and number of random test samples |
 
-   The checkpoints `<model_name>-best.pth.tar` and `<model_name>-final.pth.tar` are saved to `ckpt_dir` (`../sae_checkpoints/`, i.e., `RM/sae_checkpoints/`), and the reconstructions to `log_dir/vis` (`rm_sae_logs/vis`, i.e., `RM/pretrain/rm_sae_logs/vis`).
+   The checkpoints `<model_name>-best.pth.tar` and `<model_name>-final.pth.tar` are saved to `ckpt_dir`, and the reconstructions to `log_dir/vis`.
 
-4. To use the new autoencoder, set `slot_ae.ckpt` in `configs/RM.yaml` to its checkpoint (relative to the repository root, e.g., `RM/sae_checkpoints/<model_name>-final.pth.tar`).
+4. To use the pretrained autoencoder you trained, set `slot_ae.ckpt` in `configs/RM.yaml` to its checkpoint.
 
 ---
 MH-DWN options:

@@ -17,9 +17,9 @@ from mh_dwn.dwn import SlotDWN
 from util import log, check_path
 
 class RMDataset(Dataset):
-	def __init__(self, root_dir, num_relations, img_size):
+	def __init__(self, root_dir, num_relations, split='g-set', ext='train', img_size=128):
 		root = os.path.expandvars(root_dir)
-		self.paths = sorted(glob.glob(os.path.join(root, str(num_relations), '*', '*.npz')))
+		self.paths = sorted(glob.glob(os.path.join(root, str(num_relations), split, ext, '*.npz')))
 		self.resize = transforms.Resize((img_size, img_size))
 
 	def __len__(self):
@@ -125,7 +125,7 @@ def train(args):
 	train_cfg = args.train
 	num_relations = args.num_relations
 	num_obj = args.num_obj
-	save_dir = args.ckpt_dir
+	# save_dir = args.ckpt_dir
 
 	use_cuda = not train_cfg['no_cuda'] and torch.cuda.is_available()
 	device = torch.device('cuda:' + str(train_cfg['device']) if use_cuda else 'cpu')
@@ -135,8 +135,8 @@ def train(args):
 	img_res = model_cfg['img_size'][1]
 
 	log.info('Loading RM dataset, relations = ' + str(num_relations))
-	train_data = RMDataset(data_cfg['train_path'], num_relations, img_res)
-	test_data = RMDataset(data_cfg['test_path'], num_relations, img_res)
+	train_data = RMDataset(data_cfg['path'], num_relations, split='g-set', ext='train', img_size=img_res)
+	test_data = RMDataset(data_cfg['path'], num_relations, split='g-set', ext='test', img_size=img_res)
 	train_dataloader = torch.utils.data.DataLoader(train_data, batch_size=optim_cfg['batch_size'],
 							shuffle=True, num_workers=data_cfg['num_workers'])
 	test_dataloader = torch.utils.data.DataLoader(test_data, batch_size=optim_cfg['batch_size'],
@@ -209,16 +209,16 @@ def train(args):
 
 	log.info('Training complete in ' + '{:.2f}'.format(time.time() - start) + 's')
 
-	check_path(save_dir)
-	ckpt_path = os.path.join(save_dir, 'slot_dwn_rm_' + str(num_relations) + '.pth')
-	torch.save({'dwn_state_dict': dwn_model.state_dict()}, ckpt_path)
-	log.info('Saved ' + ckpt_path)
+	# check_path(save_dir)
+	# ckpt_path = os.path.join(save_dir, 'slot_dwn_rm_' + str(num_relations) + '.pth')
+	# torch.save({'dwn_state_dict': dwn_model.state_dict()}, ckpt_path)
+	# log.info('Saved ' + ckpt_path)
 
-	if data_cfg.get('transfer_path'):
-		log.info('Evaluating on transfer set...')
-		transfer_data = RMDataset(data_cfg['transfer_path'], num_relations, img_res)
-		transfer_dataloader = torch.utils.data.DataLoader(transfer_data, batch_size=optim_cfg['batch_size'],
-								shuffle=False, num_workers=data_cfg['num_workers'])
-		print('Number of samples in transfer set>>', len(transfer_data))
-		transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_obj, device)
-		print('Transfer test accuracy>>>', transfer_acc)
+
+	log.info('Evaluating on transfer set...')
+	transfer_data = RMDataset(data_cfg['path'], num_relations, split='s-set', ext='test', img_size=img_res)
+	transfer_dataloader = torch.utils.data.DataLoader(transfer_data, batch_size=optim_cfg['batch_size'],
+							shuffle=False, num_workers=data_cfg['num_workers'])
+	print('Number of samples in transfer set>>', len(transfer_data))
+	transfer_acc = evaluate(slot_model, dwn_model, transfer_dataloader, num_obj, device)
+	print('Transfer test accuracy>>>', transfer_acc)

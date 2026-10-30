@@ -5,8 +5,8 @@ seed: 42                     # used only for deterministic slot attention. any a
 path: O3/data/
 data_name: orientation-2obj  # task data (O3-hard)
 num_obj: 2                   # objects per panel (slots passed to the DWN)
-train_size: 1000             # training samples
-val_size: 200                # validation samples
+train_size: 1000             # training samples | change to 100 for the other sample efficiency test (0.1K experiment)
+val_size: 200                # validation samples | change to 20 for the other sample efficiency test (0.1K experiment)
 split_seed: -1               # > 0 for a fixed train/val split, otherwise random
 img_size: 128
 
@@ -22,7 +22,6 @@ learning_rate: 0.01
 num_epochs: 100
 num_workers: 4
 log_interval: 10
-save_interval: 1
 patience: 10
 min_delta: 0.000001
 
